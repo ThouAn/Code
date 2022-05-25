@@ -1,0 +1,88 @@
+import numpy as np
+from numpy.linalg import inv as inv
+from keras.models import Sequential
+from keras.layers import Dense, LSTM, Dropout, Activation
+from sklearn.preprocessing import MinMaxScaler
+import time
+
+def create_lstm_samples(dataset, time_lags, rate):
+    dataX, dataY = [], []
+    data_len = dataset.shape[0] - np.max(time_lags)
+    t_sample = np.random.choice(data_len, int(rate * data_len), replace = False)
+    
+    for t in t_sample:
+        a = dataset[t + np.max(time_lags) - time_lags, :][::-1]
+        dataX.append(a)
+        dataY.append(dataset[t + np.max(time_lags), :])
+    return np.array(dataX), np.array(dataY)
+    
+    def lstmmodel(rank, lag_len):
+    create the LSTM network
+    model = Sequential()
+     model.add(LSTM(rank, input_shape = (lag_len, rank), return_sequences = True)) 
+    model.add(LSTM(rank, input_shape = (lag_len, rank)))
+    model.add(Dense(rank))
+    model.compile()
+    return model
+    
+    def LSTM_GL_ReMF():
+    W = init["W"]
+    X = init["X"]
+    
+    if track:
+        mape_pre = float(np.inf)
+        rmse_pre = float(np.inf)
+        pos_err = np.where((sparse_mat == 0) & (dense_mat != 0))
+        count = 0
+    model = lstmmodel(r, d)
+    model_reverse = lstmmodel(r, d)
+    start_time = time.time()
+    for iters in range(maxiter):
+        for i in range(dim1):
+            pos0 = np.where(sparse_mat[i, :] != 0)
+            pos1 = np.where(ADJ[i,:] == 1)[0]
+            vec1 = np.sum(W[pos1, :], axis=0)
+           
+
+        for t in range(dim2):
+            pos0 = np.where(sparse_mat[:, t] != 0)
+            Wt = W[pos0[0], :]
+            if iters == 0 or t < max_lags:
+                X[t, :] = np.matmul(inv(np.matmul(Wt.T, Wt) + lambda_x * eta * np.eye(r)), np.matmul(Wt.T, sparse_mat[pos0[0], t]))
+            else:
+                X_hat = X[t - time_lags, :][::-1]
+                X_hat_feed = X_hat[np.newaxis, :, :]
+                Qt =  model.predict(X_hat_feed)[0]
+                X[t, :] = np.matmul(inv(np.matmul(Wt.T, Wt)
+                                           + lambda_x * np.eye(r) + lambda_x * eta * np.eye(r)),
+                                       (np.matmul(Wt.T, sparse_mat[pos0[0], t]) + lambda_x * Qt))
+        
+        if iters == 0:
+            lstmX, lstmY = create_lstm_samples(X, time_lags, 1)
+            model.fit()
+        else:
+            lstmX, lstmY = create_lstm_samples()
+            model.fit()
+        if (iters + 1) % 50 == 0:
+            print('Iterations: %d, time cost: %ds'%((iters + 1), (time.time() - start_time)))
+            start_time = time.time()
+            if track:
+                mat_hat = np.matmul(W, X.T)
+                mat_hat[position] = sparse_mat[position]
+                mat_hat[mat_hat < 0] = 0
+                rmse = root_mean_squared_error(dense_mat, mat_hat, pos_err)
+                mape = mean_absolute_percentage_error(dense_mat, mat_hat, pos_err)
+                print('Imputation RMSE = %.2f'%rmse)
+                print('Imputation MAPE = %.2f'%mape)
+                rmse_dif = rmse_pre - rmse
+                mape_dif = mape_pre - mape
+                rmse_pre = rmse
+                mape_pre = mape
+                if rmse_dif < 0.001 and mape_dif < 0.001:
+                    count += 1
+                    if count == patience:
+                        print('Wait step: %d'%count)
+                        break
+                else:
+                    count = 0
+            print()
